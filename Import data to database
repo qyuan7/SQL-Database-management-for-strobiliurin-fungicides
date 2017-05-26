@@ -1,0 +1,52 @@
+import sqlite3
+conn = sqlite3.connect('strobi_02.sqlite')
+cur = conn.cursor()
+
+# Make some fresh tables
+cur.executescript('''
+DROP TABLE IF EXISTS Compound;
+DROP TABLE IF EXISTS Similarity;
+DROP TABLE IF EXISTS TARGET;
+
+CREATE TABLE Compound (
+id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,
+name TEXT UNIQUE,
+smile TEXT UNIQUE,
+log_iso, iso, log_deg, deg );
+
+CREATE TABLE Similarity (
+reference_id INTEGER,
+compound_id INTEGER,
+ap, morgan2, cmorgan2, fmorgan2);
+
+CREATE TABLE Target(
+id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,
+name TEXT UNIQUE);
+
+''')
+
+strobi_data = open('strobi_data.csv', 'r') 
+similarity_data = open ('simil_data_.csv', 'r')
+for line in strobi_data:
+    line = line.rstrip().split(',')
+    name, smile, log_iso, iso, log_deg, deg = line
+    if name is None or smile is None or log_iso is None or iso is None or log_deg is None or deg is None:
+        continue
+    #print name, smile, log_iso, iso, log_deg, deg
+    cur.execute('''INSERT OR IGNORE INTO Compound (name,smile, log_iso, iso, log_deg, deg)
+    VALUES(?, ?, ?, ?, ?,?)''',(name,smile, log_iso, iso, log_deg, deg))
+    cur.execute('''INSERT OR IGNORE INTO Target (name)
+    VALUES (?)''',(name, ))
+
+for line in similarity_data:
+    line = line.rstrip().split(',')
+    reference_n, compound_n, ap, morgan2, cmorgan2, fmorgan2 = line
+    #reference_id = reference_n[1:]
+    #compound_id = compound_n[1:]
+    print reference_n, compound_n , ap, morgan2, cmorgan2, fmorgan2
+    #cur.execute('''SELECT id FROM Compound INTO reference_id WHERE name=reference_n''')
+    
+    cur.execute('''INSERT INTO Similarity (reference_id, compound_id, ap, morgan2, cmorgan2, fmorgan2)
+    VALUES((SELECT id FROM Target WHERE name=?),(SELECT id FROM Compound WHERE name = ?),?,?,?,?)''',(reference_n,compound_n, ap, morgan2, cmorgan2, fmorgan2))
+    
+conn.commit()
